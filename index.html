@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Valentine Surprise</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            overflow: hidden; background: #fdf5e6; 
+            touch-action: manipulation; 
+        }
+        
+        .slide {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            opacity: 0;
+            transition: opacity 0.6s ease-in-out;
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            pointer-events: none;
+        }
+
+        .active { opacity: 1; pointer-events: auto; }
+
+        .clickable { 
+            position: absolute; 
+            cursor: pointer; 
+            z-index: 100;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        /* Hitboxes for phone taps */
+        #heart-btn { width: 30%; height: 30%; top: 35%; left: 35%; } 
+        #cassette-btn { width: 40%; height: 30%; top: 50%; left: 30%; } 
+        #flower-btn { width: 35%; height: 30%; top: 65%; left: 55%; } 
+
+        #yes-hitbox { width: 25%; height: 15%; top: 50%; left: 15%; } 
+        
+        #moving-no {
+            position: absolute;
+            padding: 15px 30px;
+            background: white;
+            border: 2px solid #ffb6c1;
+            border-radius: 50px; 
+            font-family: "Times New Roman", Times, serif;
+            font-size: 1.2rem;
+            color: #ad1457;
+            z-index: 500;
+            top: 55%; left: 70%; 
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        #yay-popup {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            font-family: 'Playfair Display', serif;
+            font-size: 4rem;
+            color: #ff6b81;
+            z-index: 2000;
+            text-align: center;
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #yay-popup.show { transform: translate(-50%, -50%) scale(1); }
+
+        /* Slide 7 Design */
+        #slide7 { 
+            background-color: #fce4ec; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            text-align: center; 
+            padding: 20px; 
+            position: relative;
+        }
+
+        .word { font-family: 'Playfair Display', serif; font-size: 2.5rem; color: #ad1457; display: inline-block; opacity: 0; margin: 5px; }
+        .fly-in { animation: flyIn 1s forwards; }
+        @keyframes flyIn { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        #subtext { 
+            font-family: 'Playfair Display', serif; 
+            font-size: 1.3rem; 
+            color: #ad1457; 
+            margin-top: 20px; 
+            opacity: 0; 
+            transition: opacity 1.5s ease; 
+        }
+
+        /* Heart Rain Style */
+        .heart-rain {
+            position: absolute;
+            color: #ff80ab;
+            top: -50px;
+            user-select: none;
+            pointer-events: none;
+            z-index: 10;
+            animation: fall linear forwards;
+        }
+        @keyframes fall {
+            to { transform: translateY(110vh) rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <audio id="yay-music" src="https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3"></audio>
+    <div id="yay-popup">YAYYYY! ❤️</div>
+
+    <div id="slide1" class="slide active" style="background-image: url('slide1.jpg');">
+        <div id="heart-btn" class="clickable" onclick="goTo(2)"></div>
+    </div>
+
+    <div id="slide2" class="slide" style="background-image: url('slide2.jpg');">
+        <div id="cassette-btn" class="clickable" onclick="goTo(3)"></div>
+        <div id="flower-btn" class="clickable" onclick="goTo(4)"></div>
+    </div>
+
+    <div id="slide3" class="slide" style="background-image: url('slide3.jpg');" onclick="goTo(2)"></div>
+    <div id="slide4" class="slide" style="background-image: url('slide4.jpg');" onclick="goTo(5)"></div>
+
+    <div id="slide5" class="slide" style="background-image: url('slide5.jpg');">
+        <div id="yes-hitbox" class="clickable" onclick="handleYes()"></div>
+        <div id="moving-no" ontouchstart="handleNoMove()" onclick="handleNoMove()">No</div>
+    </div>
+
+    <div id="slide6" class="slide" style="background-image: url('slide6.jpg');" onclick="goTo(7)"></div>
+
+    <div id="slide7" class="slide">
+        <div>
+            <span class="word" id="w1">Happy</span>
+            <span class="word" id="w2">Valentine's</span><br>
+            <span class="word" id="w3">Day</span>
+            <span class="word" id="w4">Baby</span>
+        </div>
+        <div id="subtext">Many more valentine's to celebrate</div>
+    </div>
+
+    <script>
+        let noStep = 0;
+        const messages = ["Are you sure?", "Think about it", "Really?", "Please?"];
+
+        function goTo(num) {
+            document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+            document.getElementById('slide' + num).classList.add('active');
+            if(num === 4 || num === 6) { confetti({ particleCount: 100, spread: 60, origin: { y: 0.7 } }); }
+            if(num === 7) { startFinal(); }
+        }
+
+        function handleNoMove() {
+            const no = document.getElementById('moving-no');
+            no.innerText = messages[noStep % messages.length];
+            noStep++;
+            const x = Math.random() * (window.innerWidth - 150);
+            const y = Math.random() * (window.innerHeight - 100);
+            no.style.left = x + 'px';
+            no.style.top = y + 'px';
+        }
+
+        function handleYes() {
+            const popup = document.getElementById('yay-popup');
+            document.getElementById('yay-music').play();
+            popup.classList.add('show');
+            confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 } });
+            setTimeout(() => { popup.classList.remove('show'); goTo(6); }, 2000);
+        }
+
+        function startFinal() {
+            // Words fly in
+            ['w1', 'w2', 'w3', 'w4'].forEach((id, i) => {
+                setTimeout(() => { document.getElementById(id).classList.add('fly-in'); }, i * 500);
+            });
+            // Subtext fades in
+            setTimeout(() => { document.getElementById('subtext').style.opacity = 1; }, 2500);
+            // HEART RAIN START
+            setInterval(createHeart, 400); 
+        }
+
+        function createHeart() {
+            const heart = document.createElement('div');
+            heart.className = 'heart-rain';
+            heart.innerHTML = '❤️';
+            heart.style.left = Math.random() * 100 + 'vw';
+            heart.style.fontSize = (Math.random() * 20 + 10) + 'px';
+            heart.style.animationDuration = (Math.random() * 3 + 2) + 's';
+            heart.style.opacity = Math.random() + 0.5;
+            document.getElementById('slide7').appendChild(heart);
+            
+            // Remove heart after it falls to keep the phone running fast
+            setTimeout(() => { heart.remove(); }, 5000);
+        }
+    </script>
+</body>
+</html>
